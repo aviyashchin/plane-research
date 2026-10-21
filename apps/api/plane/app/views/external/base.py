@@ -4,6 +4,7 @@
 
 # Python import
 import os
+from html import escape
 from typing import List, Dict, Tuple
 
 # Third party import
@@ -16,7 +17,10 @@ from rest_framework.response import Response
 # Module import
 from plane.app.permissions import ROLE, allow_permission
 from plane.app.serializers import ProjectLiteSerializer, WorkspaceLiteSerializer
-from plane.db.models import Project, Workspace
+from plane.db.models import Project, Workspace, Page
+from django.shortcuts import get_object_or_404
+from django.db.models import Q
+from rest_framework import serializers
 from plane.license.utils.instance_value import get_configuration_value
 from plane.utils.exception_logger import log_exception
 
@@ -100,6 +104,9 @@ def get_llm_config() -> Tuple[str | None, str | None, str | None]:
         log_exception(ValueError(f"Unsupported provider: {provider_key}"))
         return None, None, None
 
+    if os.environ.get("LLM_BASE_URL") and not api_key:
+        api_key = "local-research"
+
     if not api_key:
         log_exception(ValueError(f"Missing API key for provider: {provider.name}"))
         return None, None, None
@@ -108,13 +115,8 @@ def get_llm_config() -> Tuple[str | None, str | None, str | None]:
     if not model:
         model = provider.default_model
 
-    # Validate model is supported by provider
-    if model not in provider.models:
-        log_exception(
-            ValueError(
-                f"Model {model} not supported by {provider.name}. Supported models: {', '.join(provider.models)}"
-            )
-        )
+    # Model names change independently of Plane releases. The operator selects the model.
+    if not isinstance(model, str) or not model.strip() or len(model) > 200:
         return None, None, None
 
     return api_key, model, provider_key
@@ -122,20 +124,33 @@ def get_llm_config() -> Tuple[str | None, str | None, str | None]:
 
 def get_llm_response(task, prompt, api_key: str, model: str, provider: str) -> Tuple[str | None, str | None]:
     """Helper to get LLM completion response"""
-    final_text = task + "\n" + prompt
+    final_text = str(task) + "\n" + str(prompt or "")
     try:
-        # For Gemini, prepend provider name to model
-        if provider.lower() == "gemini":
-            model = f"gemini/{model}"
-
-        client = OpenAI(api_key=api_key)
+        base_url = os.environ.get("LLM_BASE_URL")
+        if not base_url and os.environ.get("LLM_ALLOW_PAID_API") != "1":
+            return None, "Set LLM_BASE_URL for a local model or explicitly enable paid inference"
+        if provider.lower() == "anthropic":
+            response = requests.post(
+                f"{(base_url or 'https://api.anthropic.com/v1').rstrip('/')}/messages",
+                headers={"x-api-key": api_key, "anthropic-version": "2023-06-01"},
+                json={"model": model, "max_tokens": 2048, "messages": [{"role": "user", "content": final_text}]},
+                timeout=90,
+            )
+            response.raise_for_status()
+            return "\n".join(block["text"] for block in response.json()["content"] if block["type"] == "text"), None
+        if provider.lower() == "gemini" and not base_url:
+            base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+        client = OpenAI(api_key=api_key, base_url=base_url, timeout=90, max_retries=1)
         chat_completion = client.chat.completions.create(
-            model=model, messages=[{"role": "user", "content": final_text}]
+            model=model, messages=[{"role": "user", "content": final_text}], max_tokens=2048
         )
         text = chat_completion.choices[0].message.content
+        if not isinstance(text, str) or not text.strip():
+            return None, "The model returned an empty response"
         return text, None
     except Exception as e:
-        log_exception(e)
+        # Provider exceptions can contain credentials and user prompts.
+        log_exception(RuntimeError(f"LLM request failed: {e.__class__.__name__}"))
         error_type = e.__class__.__name__
         if error_type == "AuthenticationError":
             return None, f"Invalid API key for {provider}"
@@ -157,10 +172,25 @@ class GPTIntegrationEndpoint(BaseAPIView):
             )
 
         task = request.data.get("task", False)
-        if not task:
-            return Response({"error": "Task is required"}, status=status.HTTP_400_BAD_REQUEST)
+        if not isinstance(task, str) or not task.strip() or len(task) > 2000:
+            return Response({"error": "Task must contain 1 to 2000 characters"}, status=status.HTTP_400_BAD_REQUEST)
 
-        text, error = get_llm_response(task, request.data.get("prompt", False), api_key, model, provider)
+        prompt = request.data.get("prompt", "")
+        if not isinstance(prompt, str) or len(prompt) > 100000:
+            return Response(
+                {"error": "Prompt must be text of at most 100000 characters"}, status=status.HTTP_400_BAD_REQUEST
+            )
+        if request.data.get("page_id"):
+            page_id = serializers.UUIDField().run_validation(request.data["page_id"])
+            page = get_object_or_404(
+                Page.objects.filter(Q(owned_by=request.user) | Q(access=0)),
+                id=page_id,
+                workspace__slug=slug,
+                projects__id=project_id,
+                project_pages__deleted_at__isnull=True,
+            )
+            prompt = page.description_stripped or ""
+        text, error = get_llm_response(task, prompt, api_key, model, provider)
         if not text and error:
             return Response(
                 {"error": "An internal error has occurred."},
@@ -168,12 +198,12 @@ class GPTIntegrationEndpoint(BaseAPIView):
             )
 
         workspace = Workspace.objects.get(slug=slug)
-        project = Project.objects.get(pk=project_id)
+        project = Project.objects.get(pk=project_id, workspace__slug=slug)
 
         return Response(
             {
                 "response": text,
-                "response_html": text.replace("\n", "<br/>"),
+                "response_html": escape(text or "").replace("\n", "<br/>"),
                 "project_detail": ProjectLiteSerializer(project).data,
                 "workspace_detail": WorkspaceLiteSerializer(workspace).data,
             },
@@ -193,10 +223,15 @@ class WorkspaceGPTIntegrationEndpoint(BaseAPIView):
             )
 
         task = request.data.get("task", False)
-        if not task:
-            return Response({"error": "Task is required"}, status=status.HTTP_400_BAD_REQUEST)
+        if not isinstance(task, str) or not task.strip() or len(task) > 2000:
+            return Response({"error": "Task must contain 1 to 2000 characters"}, status=status.HTTP_400_BAD_REQUEST)
 
-        text, error = get_llm_response(task, request.data.get("prompt", False), api_key, model, provider)
+        prompt = request.data.get("prompt", "")
+        if not isinstance(prompt, str) or len(prompt) > 100000:
+            return Response(
+                {"error": "Prompt must be text of at most 100000 characters"}, status=status.HTTP_400_BAD_REQUEST
+            )
+        text, error = get_llm_response(task, prompt, api_key, model, provider)
         if not text and error:
             return Response(
                 {"error": "An internal error has occurred."},
@@ -206,7 +241,7 @@ class WorkspaceGPTIntegrationEndpoint(BaseAPIView):
         return Response(
             {
                 "response": text,
-                "response_html": text.replace("\n", "<br/>"),
+                "response_html": escape(text or "").replace("\n", "<br/>"),
             },
             status=status.HTTP_200_OK,
         )

@@ -1583,6 +1583,14 @@ def issue_activity(
         # Save all the values to database
         issue_activities_created = IssueActivity.objects.bulk_create(issue_activities)
 
+        from plane.bgtasks.research_task import queue_research_activity
+
+        try:
+            queue_research_activity(project_id, issue_id, type, epoch)
+        except Exception as exc:
+            # Integration delivery must not prevent native notifications.
+            log_exception(RuntimeError(f"Research delivery failed: {exc.__class__.__name__}"))
+
         if notification:
             notifications.delay(
                 type=type,
