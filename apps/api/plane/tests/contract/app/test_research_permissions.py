@@ -240,3 +240,53 @@ def test_provider_secrets_stay_encrypted_and_outside_api_responses(session_clien
     assert connection.encrypted_credentials
     assert "encrypted_credentials" not in installation
     assert "credentials" not in installation
+
+
+@pytest.mark.parametrize(
+    "workspace_role,project_role,workspace_active,project_active,expected_status",
+    [
+        (20, 5, True, True, "completed"),
+        (15, 15, True, True, "completed"),
+        (15, 5, True, True, "failed"),
+        (20, 5, False, True, "failed"),
+        (20, 5, True, False, "failed"),
+    ],
+)
+def test_queued_import_respects_workspace_admin_and_active_membership(
+    workspace,
+    permission_project,
+    create_user,
+    github_installation,
+    monkeypatch,
+    workspace_role,
+    project_role,
+    workspace_active,
+    project_active,
+    expected_status,
+):
+    import requests
+    from plane.bgtasks.research_task import run_research_job
+
+    _, installation = github_installation
+    job = ResearchJob.objects.create(project=permission_project, connection_id=installation["id"])
+    WorkspaceMember.objects.filter(workspace=workspace, member=create_user).update(
+        role=workspace_role, is_active=workspace_active
+    )
+    ProjectMember.objects.filter(project=permission_project, member=create_user).update(
+        role=project_role, is_active=project_active
+    )
+
+    def transport(self, method, url, **kwargs):
+        if expected_status != "completed":
+            pytest.fail("The worker must reject revoked membership before contacting GitHub")
+        assert method == "GET" and url.endswith("/issues")
+        response = requests.Response()
+        response.status_code = 200
+        response._content = b"[]"
+        response.url = url
+        return response
+
+    monkeypatch.setattr("requests.Session.request", transport)
+    run_research_job.apply(args=[str(job.id)], throw=True)
+    job.refresh_from_db()
+    assert job.status == expected_status

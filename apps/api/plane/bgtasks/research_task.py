@@ -28,12 +28,17 @@ from plane.utils.research_providers import Provider
 
 
 def actor_has_access(connection):
-    return (
-        WorkspaceMember.objects.filter(workspace=connection.workspace, member=connection.actor, is_active=True).exists()
-        and ProjectMember.objects.filter(
-            project=connection.project, member=connection.actor, is_active=True, role__in=[15, 20]
-        ).exists()
+    workspace_member = WorkspaceMember.objects.filter(
+        workspace=connection.workspace, member=connection.actor, is_active=True
+    ).first()
+    if not workspace_member:
+        return False
+    project_membership = ProjectMember.objects.filter(
+        project=connection.project, member=connection.actor, is_active=True
     )
+    if workspace_member.role == 20:
+        return project_membership.exists()
+    return project_membership.filter(role__in=[15, 20]).exists()
 
 
 def plain_html(text):
@@ -270,12 +275,17 @@ def sync_github_issue(provider, item, issue, comments):
             provider.request(
                 "PATCH", f"/repos/{connection.config['repository']}/issues/comments/{remote['id']}", json={"body": body}
             )
-        ResearchObject.objects.get_or_create(
+        ResearchObject.all_objects.update_or_create(
             connection=connection,
-            project=connection.project,
             kind="outbound_comment",
             source_id=str(comment.id),
-            defaults={"issue": issue, "comment": comment, "metadata": {"remote_id": str(remote["id"])}},
+            defaults={
+                "deleted_at": None,
+                "project": connection.project,
+                "issue": issue,
+                "comment": comment,
+                "metadata": {"remote_id": str(remote["id"])},
+            },
         )
 
 

@@ -43,6 +43,21 @@ jobs:
         run: pnpm check --concurrency=2
       - name: Build all applications and packages
         run: pnpm build --concurrency=2
+      - name: Check production SPA startup
+        run: |
+          pnpm --filter web start > /tmp/plane-web-start.log 2>&1 &
+          web_pid=$!
+          trap 'kill "$web_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:3000/research/settings/integrations/ > /tmp/plane-web.html; then
+              test -s /tmp/plane-web.html
+              exit 0
+            fi
+            kill -0 "$web_pid" || { cat /tmp/plane-web-start.log; exit 1; }
+            sleep 1
+          done
+          cat /tmp/plane-web-start.log
+          exit 1
 
   backend:
     name: API lint, migrations and full test suite

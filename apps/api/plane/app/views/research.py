@@ -144,9 +144,13 @@ class ResearchSummaryEndpoint(BaseAPIView):
 
         issues = Issue.issue_objects.filter(project_id=project_id, workspace__slug=slug)
         if request.GET.get("cycle_id"):
-            issues = issues.filter(issue_cycle__cycle_id=request.GET["cycle_id"])
+            issues = issues.filter(
+                issue_cycle__cycle_id=request.GET["cycle_id"], issue_cycle__deleted_at__isnull=True
+            )
         if request.GET.get("module_id"):
-            issues = issues.filter(issue_module__module_id=request.GET["module_id"])
+            issues = issues.filter(
+                issue_module__module_id=request.GET["module_id"], issue_module__deleted_at__isnull=True
+            )
         if request.GET.get("state_group"):
             issues = issues.filter(state__group=request.GET["state_group"])
         group_by = request.GET.get("group_by", "state__name")
@@ -165,7 +169,7 @@ class ResearchSummaryEndpoint(BaseAPIView):
                     group["estimate_points"] += points
             except InvalidOperation:
                 pass
-        if request.GET.get("format") == "csv":
+        if request.GET.get("export") == "csv":
             import csv
             from django.http import HttpResponse
 

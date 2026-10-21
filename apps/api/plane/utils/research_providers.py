@@ -170,7 +170,9 @@ class Provider:
     def jira_issue(self, row):
         fields = row["fields"]
         state = fields.get("status") or {}
-        priority = (fields.get("priority") or {}).get("name", "none")
+        source_priority = fields.get("priority") or {}
+        priority_name = source_priority.get("name", "none")
+        priority_map = self.config.get("priority_map", {})
         return {
             "id": str(row["id"]),
             "key": row["key"],
@@ -183,10 +185,13 @@ class Provider:
             "group": {"done": "completed", "indeterminate": "started"}.get(
                 (state.get("statusCategory") or {}).get("key"), "unstarted"
             ),
-            "priority": self.config.get("priority_map", {}).get(
-                priority,
-                {"Highest": "urgent", "High": "high", "Medium": "medium", "Low": "low", "Lowest": "low"}.get(
-                    priority, "none"
+            "priority": priority_map.get(
+                str(source_priority.get("id", "")),
+                priority_map.get(
+                    priority_name,
+                    {"Highest": "urgent", "High": "high", "Medium": "medium", "Low": "low", "Lowest": "low"}.get(
+                        priority_name, "none"
+                    ),
                 ),
             ),
             "estimate": fields.get(self.config.get("estimate_field", "")),

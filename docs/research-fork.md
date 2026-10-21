@@ -75,6 +75,13 @@ LLM_BASE_URL=http://ollama:11434/v1
 LLM_MODEL=<installed-local-model>
 ```
 
+Upgraded instances can retain AI settings in the database.
+With the default `SKIP_ENV_VAR=1`, saved `LLM_MODEL` and `LLM_PROVIDER` override environment values.
+Set the installed model in the existing instance-admin AI settings before using local inference.
+The saved provider must be `openai` for Ollama's compatible API.
+Alternatively, set `SKIP_ENV_VAR=0` to use environment configuration.
+That option applies to all instance settings. Carry existing settings into deployment variables first.
+
 The API must reach the model URL. `localhost` inside a container means that container.
 Ollama uses its [OpenAI-compatible API](https://docs.ollama.com/api/openai-compatibility).
 Model names are operator-selected. The client uses a 90-second timeout and a 2048-token output limit.

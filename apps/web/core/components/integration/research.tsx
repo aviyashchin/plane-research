@@ -565,7 +565,7 @@ function ResearchAnalytics({ slug, projectId }: { slug: string; projectId: strin
         </label>
         <a
           className="text-custom-primary-100 underline"
-          href={`${API_BASE_URL}${service.root(slug, projectId)}summary/?${query}&format=csv`}
+          href={`${API_BASE_URL}${service.root(slug, projectId)}summary/?${query}&export=csv`}
         >
           Download CSV
         </a>

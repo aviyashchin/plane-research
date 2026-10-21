@@ -375,7 +375,7 @@ def github_research_source(session_client, workspace, research_project, monkeypa
         format="json",
     )
     assert response.status_code == 201
-    source = {"issues": [], "comments": {}, "writes": []}
+    source = {"issues": [], "comments": {}, "writes": [], "comment_sequence": 1000}
 
     def transport(self, method, url, **kwargs):
         path = urlparse(url).path
@@ -398,14 +398,14 @@ def github_research_source(session_client, workspace, research_project, monkeypa
                 }
                 source["issues"].append(result)
             elif method == "POST" and path.endswith("/comments"):
-                comment_id = str(1001 + len(source["comments"]))
+                source["comment_sequence"] += 1
+                comment_id = str(source["comment_sequence"])
                 result = {"id": int(comment_id), "user": {"login": "plane"}, **data}
                 source["comments"][comment_id] = result
             elif "/issues/comments/" in path:
                 comment_id = path.rsplit("/", 1)[1]
                 if method == "DELETE":
-                    source["comments"].pop(comment_id)
-                    status = 204
+                    status = 204 if source["comments"].pop(comment_id, None) is not None else 404
                 elif method == "PATCH":
                     source["comments"][comment_id].update(data)
                     result = source["comments"][comment_id]
@@ -498,6 +498,17 @@ def test_github_comment_edits_and_deletions_sync_in_both_directions(
     assert "Revised Plane note" in source["comments"][outbound_id]["body"]
     assert len(source["comments"]) == 2
 
+    source["comments"].pop(outbound_id)
+    sync()
+    recreated_id = next(key for key, row in source["comments"].items() if "Revised Plane note" in row["body"])
+    assert recreated_id != outbound_id
+    assert session_client.patch(comment_url, {"access": "INTERNAL"}, format="json").status_code == 200
+    sync()
+    assert recreated_id not in source["comments"]
+    assert session_client.patch(comment_url, {"access": "EXTERNAL"}, format="json").status_code == 200
+    sync()
+    assert any("Revised Plane note" in row["body"] for row in source["comments"].values())
+
     source["comments"].pop("600")
     sync()
     assert "Revised source note" not in str(session_client.get(comments_url).data)
@@ -571,3 +582,110 @@ def test_jira_blocks_and_duplicate_links_keep_their_native_directions(
     assert second["blocking"] == set()
     assert first["duplicate"] == {str(issues["Research 3"].id)}
     assert third["duplicate"] == {str(issues["Research 1"].id)}
+
+
+@pytest.mark.contract
+@pytest.mark.django_db
+@pytest.mark.parametrize("membership_kind", ["cycle", "module"])
+def test_analytics_excludes_removed_memberships_from_counts_points_and_csv(
+    session_client, workspace, research_project, create_user, membership_kind
+):
+    import csv
+    from io import StringIO
+
+    from plane.db.models import Cycle, CycleIssue, Estimate, EstimatePoint, Issue, Module, ModuleIssue, State
+
+    state = State.objects.create(project=research_project, name="Todo", group="unstarted", default=True)
+    estimate = Estimate.objects.create(project=research_project, name="Research points", type="points")
+    research_project.estimate = estimate
+    research_project.save(update_fields=["estimate"])
+    if membership_kind == "cycle":
+        group = Cycle.objects.create(project=research_project, name="Research cycle", owned_by=create_user)
+        membership_model = CycleIssue
+        route = f"cycles/{group.id}/cycle-issues/"
+    else:
+        group = Module.objects.create(project=research_project, name="Research module")
+        membership_model = ModuleIssue
+        route = f"modules/{group.id}/issues/"
+    issues = []
+    for index, points in enumerate([5, 3]):
+        point = EstimatePoint.objects.create(project=research_project, estimate=estimate, key=index, value=str(points))
+        issue = Issue.objects.create(
+            project=research_project, name=f"Research {index}", state=state, estimate_point=point
+        )
+        membership_model.objects.create(project=research_project, issue=issue, **{membership_kind: group})
+        issues.append(issue)
+    root = f"/api/workspaces/{workspace.slug}/projects/{research_project.id}/"
+    summary_url = root + f"research/summary/?{membership_kind}_id={group.id}"
+    before = session_client.get(summary_url)
+    assert before.status_code == 200
+    assert before.data["count"] == 2
+    assert before.data["estimate_points"] == 8
+
+    assert session_client.delete(root + route + f"{issues[0].id}/").status_code == 204
+    assert membership_model.all_objects.filter(issue=issues[0], deleted_at__isnull=False).exists()
+    after = session_client.get(summary_url)
+    assert after.status_code == 200
+    assert after.data["count"] == 1
+    assert after.data["estimate_points"] == 3
+    assert after.data["groups"] == {"Todo": {"count": 1, "estimate_points": 3}}
+    exported = session_client.get(summary_url + "&export=csv")
+    assert exported.status_code == 200
+    assert list(csv.DictReader(StringIO(exported.content.decode()))) == [
+        {"Group": "Todo", "Issues": "1", "Estimate points": "3"}
+    ]
+    unfiltered = session_client.get(root + "research/summary/")
+    assert unfiltered.data["count"] == 2
+    assert unfiltered.data["estimate_points"] == 8
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "source_priority,priority_map,expected",
+    [
+        ({"id": "1", "name": "Höchste"}, {"1": "urgent", "Höchste": "low"}, "urgent"),
+        ({"id": "2", "name": "Custom"}, {"Custom": "high"}, "high"),
+        ({"id": "3", "name": "Low"}, {}, "low"),
+    ],
+)
+def test_jira_provider_maps_priority_ids_before_names(monkeypatch, source_priority, priority_map, expected):
+    import json
+    from types import SimpleNamespace
+
+    import requests
+    from cryptography.fernet import Fernet
+    from plane.utils.research import encrypt_credentials
+    from plane.utils.research_providers import Provider
+
+    monkeypatch.setenv("RESEARCH_CREDENTIAL_KEY", Fernet.generate_key().decode())
+    connection = SimpleNamespace(
+        provider="jira",
+        config={
+            "site": "https://research.atlassian.net",
+            "project_key": "RES",
+            "priority_map": priority_map,
+        },
+        encrypted_credentials=encrypt_credentials({"token": "fixture", "email": "research@example.com"}),
+    )
+
+    def transport(self, method, url, **kwargs):
+        response = requests.Response()
+        response.status_code = 200
+        response._content = json.dumps(
+            {
+                "isLast": True,
+                "issues": [
+                    {
+                        "id": "10001",
+                        "key": "RES-1",
+                        "fields": {"summary": "Mapped priority", "priority": source_priority},
+                    }
+                ],
+            }
+        ).encode()
+        response.url = url
+        return response
+
+    monkeypatch.setattr("requests.Session.request", transport)
+    issues, _ = Provider(connection).issue_page({})
+    assert issues[0]["priority"] == expected
