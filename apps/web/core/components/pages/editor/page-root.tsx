@@ -22,6 +22,7 @@ import { PageVersionsOverlay } from "../version";
 import { PagesVersionEditor } from "../version/editor";
 import { ContentLimitBanner } from "./content-limit-banner";
 import { PageEditorBody } from "./editor-body";
+import { AgentTeammates } from "./agent-teammates";
 import type { TEditorBodyConfig, TEditorBodyHandlers } from "./editor-body";
 import { PageEditorToolbarRoot } from "./toolbar";
 
@@ -186,6 +187,9 @@ export const PageRoot = observer(function PageRoot(props: TPageRootProps) {
           onCollaborationStateChange={setCollaborationState}
         />
       </div>
+      {import.meta.env.VITE_AGENT_TEAMMATES === "1" && projectId && page.id && (
+        <AgentTeammates workspaceSlug={workspaceSlug} projectId={projectId} pageId={page.id} />
+      )}
       <PageNavigationPaneRoot
         storeType={storeType}
         handleClose={handleCloseNavigationPane}
