@@ -2,7 +2,7 @@
  * Copyright (c) 2026-present Plane research fork contributors
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type Teammate = { id: string; user_id: string; name: string; avatar: string; runtime: string };
 type Run = { id: string; agent_id: string; human_id: string; status: string; reviewer_id: string | null };
@@ -25,8 +25,7 @@ export function AgentTeammates({
   const [error, setError] = useState("");
   const [connection, setConnection] = useState("Connecting");
   const [busy, setBusy] = useState(false);
-  const stream = useRef<EventSource | null>(null);
-  const nonce = useRef(crypto.randomUUID());
+  const [nonce, setNonce] = useState(() => crypto.randomUUID());
   const refresh = useCallback(async () => {
     const response = await fetch(base, { credentials: "same-origin", cache: "no-store" });
     if (!response.ok) throw new Error(`Workspace access unavailable (${response.status})`);
@@ -41,12 +40,12 @@ export function AgentTeammates({
 
   useEffect(() => {
     let disposed = false;
+    let source: EventSource | undefined;
     void refresh()
       .then((initial) => {
         if (disposed) return null;
         const cursor = initial.events.at(-1)?.id ?? 0;
-        const source = new EventSource(`${base}events/?after=${cursor}`);
-        stream.current = source;
+        source = new EventSource(`${base}events/?after=${cursor}`);
         source.addEventListener("open", () => setConnection("Live"));
         source.addEventListener("error", () => setConnection("Reconnecting"));
         source.addEventListener("activity", (message) => {
@@ -66,14 +65,14 @@ export function AgentTeammates({
             ["proposal", "approved", "rejected", "cancelled", "error", "progress", "mention"].includes(activity.type)
           ) {
             void refresh().catch(() => {
-              source.close();
+              source?.close();
               setState(null);
               setError("Workspace access revoked or unavailable");
             });
           }
         });
         source.addEventListener("revoked", () => {
-          source.close();
+          source?.close();
           setState(null);
           setConnection("Access revoked");
           setError("Workspace access revoked or unavailable");
@@ -85,7 +84,7 @@ export function AgentTeammates({
       });
     return () => {
       disposed = true;
-      stream.current?.close();
+      source?.close();
     };
   }, [base, refresh]);
 
@@ -108,7 +107,7 @@ export function AgentTeammates({
       }
       if (path === "mentions/") {
         setText("");
-        nonce.current = crypto.randomUUID();
+        setNonce(crypto.randomUUID());
       }
       await refresh();
     } catch (cause) {
@@ -178,7 +177,7 @@ export function AgentTeammates({
                   <div key={e.id} data-event-id={e.id} className="mt-3 border-t border-subtle pt-2">
                     <p className="text-[10px] text-tertiary uppercase">
                       {e.actor_id === teammate?.user_id ? teammate.name : `Human ${e.actor_id.slice(0, 8)}`} ·{" "}
-                      {e.type.replaceAll("_", " ")} · {new Date(e.at).toLocaleTimeString()}
+                      {e.type.replaceAll("_", " ")} · {new Date(e.at).toISOString().slice(11, 19)} UTC
                     </p>
                     <p className="mt-1 text-11 break-words whitespace-pre-wrap">{e.text}</p>
                   </div>
@@ -221,7 +220,7 @@ export function AgentTeammates({
         className="border-t border-subtle p-4"
         onSubmit={(e) => {
           e.preventDefault();
-          void act("mentions/", { agent_id: selected, text, nonce: nonce.current });
+          void act("mentions/", { agent_id: selected, text, nonce });
         }}
       >
         <label htmlFor="agent-mention" className="text-11">
