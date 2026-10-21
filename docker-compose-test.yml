@@ -72,7 +72,7 @@ services:
       retries: 10
 
   test-minio:
-    image: minio/minio@sha256:7330be2e7320a7a699b36f72bd06a94d8a21ec9f6f397345d9c38fc6751141f5
+    image: pgsty/silo@sha256:2636fc4155d9a7e41ff58cdb65ddd13ba9304e67184e13c25bc5cb34016269d7
     networks:
       - test_env
     env_file:
@@ -83,16 +83,16 @@ services:
     entrypoint: >
       /bin/sh -c "
       mkdir -p /export/${AWS_S3_BUCKET_NAME:-uploads} &&
-      minio server /export --console-address ':9090' &
+      silo server /export --console-address ':9090' &
       sleep 3 &&
-      mc alias set local http://localhost:9000 ${AWS_ACCESS_KEY_ID:-access-key} ${AWS_SECRET_ACCESS_KEY:-secret-key} &&
-      mc mb local/${AWS_S3_BUCKET_NAME:-uploads} -p || true &&
+      mcli alias set local http://localhost:9000 ${AWS_ACCESS_KEY_ID:-access-key} ${AWS_SECRET_ACCESS_KEY:-secret-key} &&
+      mcli mb local/${AWS_S3_BUCKET_NAME:-uploads} -p || true &&
       tail -f /dev/null
       "
     tmpfs:
       - /export
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD", "mcli", "ready", "local"]
       interval: 10s
       timeout: 5s
       retries: 10

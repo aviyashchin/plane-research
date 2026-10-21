@@ -179,7 +179,8 @@ docker compose -f docker-compose-test.yml up --build --abort-on-container-exit -
 
 `Research fork checks` runs on PRs targeting `research-base-v1.4.2`, including drafts.
 CI checks changed Python files, real migration upgrades, and the full isolated API suite.
-The MinIO test image is pinned because the previous unversioned image could not be pulled.
+Test storage uses the maintained [PGSTY Silo release](https://github.com/pgsty/silo/releases/tag/RELEASE.2026-10-18T00-00-00Z),
+pinned by digest after an anonymous pull and S3 read/write verification. This replaces the unavailable MinIO test image.
 
 Contract tests exercise 12 imported issues, six completed issues, 30 estimate points,
 comments, relations, source mappings, retries, signatures and cross-workspace rejection.
