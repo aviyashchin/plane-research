@@ -224,6 +224,8 @@ overrides:
   "yaml@1": 1.10.3
   "yaml@2": 2.8.3
   path-to-regexp: 0.1.13
+  # serve-handler requires the v3 compile API for SPA fallback routes.
+  serve-handler>path-to-regexp: 3.3.0
   defu: 6.1.5
   postcss: 8.5.25
   axios: "catalog:"
