@@ -2,7 +2,7 @@
  * Copyright (c) 2026-present Plane research fork contributors
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type Teammate = { id: string; user_id: string; name: string; avatar: string; runtime: string };
 type Run = { id: string; agent_id: string; human_id: string; status: string; reviewer_id: string | null };
@@ -25,7 +25,8 @@ export function AgentTeammates({
   const [error, setError] = useState("");
   const [connection, setConnection] = useState("Connecting");
   const [busy, setBusy] = useState(false);
-  const [nonce, setNonce] = useState(() => crypto.randomUUID());
+  const nonce = useRef<string | null>(null);
+  const [replay, setReplay] = useState<{ base: string; cursor: number } | null>(null);
   const refresh = useCallback(async () => {
     const response = await fetch(base, { credentials: "same-origin", cache: "no-store" });
     if (!response.ok) throw new Error(`Workspace access unavailable (${response.status})`);
@@ -40,53 +41,51 @@ export function AgentTeammates({
 
   useEffect(() => {
     let disposed = false;
-    let source: EventSource | undefined;
     void refresh()
       .then((initial) => {
-        if (disposed) return null;
-        const cursor = initial.events.at(-1)?.id ?? 0;
-        source = new EventSource(`${base}events/?after=${cursor}`);
-        source.addEventListener("open", () => setConnection("Live"));
-        source.addEventListener("error", () => setConnection("Reconnecting"));
-        source.addEventListener("activity", (message) => {
-          const activity: Activity = JSON.parse((message as MessageEvent<string>).data);
-          setState((previous) =>
-            previous
-              ? {
-                  ...previous,
-                  // oxlint-disable-next-line unicorn/no-array-sort -- The project targets ES2022; this array is a fresh copy.
-                  events: [...previous.events.filter((e) => e.id !== activity.id), activity].sort(
-                    (a, b) => a.id - b.id
-                  ),
-                }
-              : previous
-          );
-          if (
-            ["proposal", "approved", "rejected", "cancelled", "error", "progress", "mention"].includes(activity.type)
-          ) {
-            void refresh().catch(() => {
-              source?.close();
-              setState(null);
-              setError("Workspace access revoked or unavailable");
-            });
-          }
-        });
-        source.addEventListener("revoked", () => {
-          source?.close();
-          setState(null);
-          setConnection("Access revoked");
-          setError("Workspace access revoked or unavailable");
-        });
-        return source;
+        if (!disposed) setReplay({ base, cursor: initial.events.at(-1)?.id ?? 0 });
+        return initial;
       })
       .catch((cause: Error) => {
         if (!disposed) setError(cause.message);
       });
     return () => {
       disposed = true;
-      source?.close();
     };
   }, [base, refresh]);
+
+  useEffect(() => {
+    if (replay?.base !== base) return;
+    const source = new EventSource(`${base}events/?after=${replay.cursor}`);
+    source.addEventListener("open", () => setConnection("Live"));
+    source.addEventListener("error", () => setConnection("Reconnecting"));
+    source.addEventListener("activity", (message) => {
+      const activity: Activity = JSON.parse((message as MessageEvent<string>).data);
+      setState((previous) =>
+        previous
+          ? {
+              ...previous,
+              // oxlint-disable-next-line unicorn/no-array-sort -- The project targets ES2022; this array is a fresh copy.
+              events: [...previous.events.filter((e) => e.id !== activity.id), activity].sort((a, b) => a.id - b.id),
+            }
+          : previous
+      );
+      if (["proposal", "approved", "rejected", "cancelled", "error", "progress", "mention"].includes(activity.type)) {
+        void refresh().catch(() => {
+          source.close();
+          setState(null);
+          setError("Workspace access revoked or unavailable");
+        });
+      }
+    });
+    source.addEventListener("revoked", () => {
+      source.close();
+      setState(null);
+      setConnection("Access revoked");
+      setError("Workspace access revoked or unavailable");
+    });
+    return () => source.close();
+  }, [base, refresh, replay]);
 
   async function act(path: string, payload: object) {
     setBusy(true);
@@ -107,7 +106,7 @@ export function AgentTeammates({
       }
       if (path === "mentions/") {
         setText("");
-        setNonce(crypto.randomUUID());
+        nonce.current = null;
       }
       await refresh();
     } catch (cause) {
@@ -220,7 +219,7 @@ export function AgentTeammates({
         className="border-t border-subtle p-4"
         onSubmit={(e) => {
           e.preventDefault();
-          void act("mentions/", { agent_id: selected, text, nonce });
+          void act("mentions/", { agent_id: selected, text, nonce: (nonce.current ??= crypto.randomUUID()) });
         }}
       >
         <label htmlFor="agent-mention" className="text-11">
