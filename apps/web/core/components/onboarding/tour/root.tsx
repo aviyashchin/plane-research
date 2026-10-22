@@ -92,12 +92,12 @@ export const TourRoot = observer(function TourRoot(props: TOnboardingTourProps) 
   return (
     <>
       {step === "welcome" ? (
-        <div className="w-4/5 overflow-hidden rounded-[10px] bg-surface-1 md:w-1/2 lg:w-2/5">
+        <div className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] min-w-0 overflow-y-auto rounded-[10px] bg-surface-1 sm:w-4/5 md:w-1/2 lg:w-2/5">
           <div className="h-full overflow-hidden">
-            <div className="grid h-64 place-items-center bg-accent-primary">
-              <PlaneLockup className="h-10 w-auto text-on-color" />
+            <div className="grid h-40 place-items-center bg-accent-primary sm:h-64">
+              <PlaneLockup className="h-10 w-auto max-w-[calc(100%-3rem)] text-on-color" />
             </div>
-            <div className="flex flex-col overflow-y-auto p-6">
+            <div className="flex min-w-0 flex-col p-4 sm:p-6">
               <h3 className="font-semibold sm:text-18">
                 Welcome to Plane, {currentUser?.first_name} {currentUser?.last_name}
               </h3>
@@ -106,7 +106,7 @@ export const TourRoot = observer(function TourRoot(props: TOnboardingTourProps) 
                 started by creating a project.
               </p>
               <div className="flex h-full items-end">
-                <div className="mt-12 flex items-center gap-6">
+                <div className="mt-6 flex w-full min-w-0 flex-col items-stretch gap-4 sm:mt-12 sm:w-auto sm:flex-row sm:items-center sm:gap-6">
                   <Button
                     variant="primary"
                     onClick={() => {
@@ -117,7 +117,7 @@ export const TourRoot = observer(function TourRoot(props: TOnboardingTourProps) 
                   </Button>
                   <button
                     type="button"
-                    className="bg-transparent text-11 font-medium text-accent-primary outline-subtle-1"
+                    className="min-h-11 bg-transparent text-11 font-medium text-accent-primary outline-subtle-1"
                     onClick={() => {
                       onComplete();
                     }}
@@ -130,27 +130,28 @@ export const TourRoot = observer(function TourRoot(props: TOnboardingTourProps) 
           </div>
         </div>
       ) : (
-        <div className="relative grid h-3/5 w-4/5 grid-cols-10 overflow-hidden rounded-[10px] bg-surface-1 sm:h-3/4 md:w-1/2 lg:w-3/5">
+        <div className="relative grid max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] min-w-0 grid-cols-10 overflow-y-auto rounded-[10px] bg-surface-1 sm:h-3/4 sm:w-4/5 sm:overflow-hidden md:w-1/2 lg:w-3/5">
           <button
             type="button"
-            className="fixed top-[19%] right-[9%] z-10 translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border border-strong bg-surface-1 p-1 sm:top-[11.5%] md:right-[24%] lg:right-[19%]"
+            aria-label="Close product tour"
+            className="absolute top-2 right-2 z-10 flex size-11 cursor-pointer items-center justify-center rounded-full border border-strong bg-surface-1 sm:size-7"
             onClick={onComplete}
           >
             <CloseIcon className="border-strong- h-3 w-3 text-primary" />
           </button>
           <TourSidebar step={step} setStep={setStep} />
-          <div className="col-span-10 h-full overflow-hidden lg:col-span-7">
+          <div className="col-span-10 min-w-0 sm:h-full sm:overflow-hidden lg:col-span-7">
             <div
-              className={`flex h-1/2 items-end overflow-hidden bg-accent-primary sm:h-3/5 ${
+              className={`flex h-40 items-end overflow-hidden bg-accent-primary sm:h-3/5 ${
                 currentStepIndex % 2 === 0 ? "justify-end" : "justify-start"
               }`}
             >
               <img src={currentStep?.image} className="h-full w-full object-cover" alt={currentStep?.title} />
             </div>
-            <div className="flex h-1/2 flex-col overflow-y-auto p-4 sm:h-2/5">
+            <div className="flex min-w-0 flex-col p-4 sm:h-2/5 sm:overflow-y-auto">
               <h3 className="font-semibold sm:text-18">{currentStep?.title}</h3>
               <p className="mt-3 text-13 text-secondary">{currentStep?.description}</p>
-              <div className="mt-3 flex h-full items-end justify-between gap-4">
+              <div className="mt-3 flex h-full min-w-0 flex-col items-stretch justify-between gap-4 sm:flex-row sm:items-end">
                 <div className="flex items-center gap-4">
                   {currentStep?.prevStep && (
                     <Button variant="secondary" onClick={() => setStep(currentStep.prevStep ?? "welcome")}>

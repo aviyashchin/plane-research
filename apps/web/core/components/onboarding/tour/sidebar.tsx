@@ -49,7 +49,7 @@ type Props = {
 
 export function TourSidebar({ step, setStep }: Props) {
   return (
-    <div className="col-span-3 hidden bg-surface-2 p-8 lg:block">
+    <div className="col-span-3 hidden min-w-0 bg-surface-2 p-8 lg:block">
       <h3 className="text-16 font-medium">
         Let{"'"}s get started!
         <br />
@@ -57,19 +57,17 @@ export function TourSidebar({ step, setStep }: Props) {
       </h3>
       <div className="mt-8 space-y-5">
         {sidebarOptions.map((option) => (
-          // oxlint-disable-next-line jsx_a11y/click-events-have-key-events
-          <h5
+          <button
             key={option.key}
-            className={`flex cursor-pointer items-center gap-2 border-l-[3px] py-0.5 pr-2 pl-3 text-13 font-medium capitalize ${
+            type="button"
+            className={`flex w-full cursor-pointer items-center gap-2 border-l-[3px] py-0.5 pr-2 pl-3 text-left text-13 font-medium capitalize ${
               step === option.key ? "border-accent-strong text-accent-primary" : "border-transparent text-secondary"
             }`}
             onClick={() => setStep(option.key)}
-            // oxlint-disable-next-line jsx_a11y/prefer-tag-over-role
-            role="button"
           >
             <option.Icon className="h-4 w-4" aria-hidden="true" />
             {option.label}
-          </h5>
+          </button>
         ))}
       </div>
     </div>
