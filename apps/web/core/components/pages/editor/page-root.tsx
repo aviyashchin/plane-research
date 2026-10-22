@@ -9,6 +9,7 @@ import { observer } from "mobx-react";
 // plane imports
 import type { CollaborationState, EditorRefApi } from "@plane/editor";
 import type { TDocumentPayload, TPage, TPageVersion, TWebhookConnectionQueryParams } from "@plane/types";
+import { cn } from "@plane/utils";
 // hooks
 import { usePageFallback } from "@/hooks/use-page-fallback";
 import type { PageUpdateHandler, TCustomEventHandlers } from "@/hooks/use-realtime-page-events";
@@ -63,6 +64,7 @@ export const PageRoot = observer(function PageRoot(props: TPageRootProps) {
   const [editorReady, setEditorReady] = useState(false);
   const [collaborationState, setCollaborationState] = useState<CollaborationState | null>(null);
   const [showContentTooLargeBanner, setShowContentTooLargeBanner] = useState(false);
+  const hasAgentTeammates = import.meta.env.VITE_AGENT_TEAMMATES === "1" && Boolean(projectId && page.id);
   // refs
   const editorRef = useRef<EditorRefApi>(null);
   // derived values
@@ -153,43 +155,55 @@ export const PageRoot = observer(function PageRoot(props: TPageRootProps) {
 
   return (
     <div className="relative flex size-full overflow-hidden transition-all duration-300 ease-in-out">
-      <div className="flex size-full flex-col overflow-hidden">
-        <PageVersionsOverlay
-          editorComponent={PagesVersionEditor}
-          fetchVersionDetails={handlers.fetchVersionDetails}
-          handleRestore={handleRestoreVersion}
-          pageId={page.id ?? ""}
-          restoreEnabled={isContentEditable}
-          storeType={storeType}
-        />
-        <PageEditorToolbarRoot
-          handleOpenNavigationPane={handleOpenNavigationPane}
-          isNavigationPaneOpen={isNavigationPaneOpen}
-          page={page}
-        />
-        {showContentTooLargeBanner && <ContentLimitBanner className="px-page-x" />}
-        <PageEditorBody
-          config={config}
-          customRealtimeEventHandlers={mergedCustomEventHandlers}
-          editorReady={editorReady}
-          editorForwardRef={editorRef}
-          handleEditorReady={handleEditorReady}
-          handleOpenNavigationPane={handleOpenNavigationPane}
-          handlers={handlers}
-          isNavigationPaneOpen={isNavigationPaneOpen}
-          page={page}
-          projectId={projectId}
-          storeType={storeType}
-          webhookConnectionParams={webhookConnectionParams}
-          workspaceSlug={workspaceSlug}
-          extendedEditorProps={extendedEditorProps}
-          isFetchingFallbackBinary={isFetchingFallbackBinary}
-          onCollaborationStateChange={setCollaborationState}
-        />
+      <div
+        className={cn(
+          "flex size-full overflow-hidden",
+          hasAgentTeammates && "min-w-0 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden"
+        )}
+      >
+        <div
+          className={cn(
+            "flex size-full flex-col overflow-hidden",
+            hasAgentTeammates && "h-[60dvh] min-h-[320px] shrink-0 lg:h-full lg:min-h-0 lg:min-w-0 lg:flex-1"
+          )}
+        >
+          <PageVersionsOverlay
+            editorComponent={PagesVersionEditor}
+            fetchVersionDetails={handlers.fetchVersionDetails}
+            handleRestore={handleRestoreVersion}
+            pageId={page.id ?? ""}
+            restoreEnabled={isContentEditable}
+            storeType={storeType}
+          />
+          <PageEditorToolbarRoot
+            handleOpenNavigationPane={handleOpenNavigationPane}
+            isNavigationPaneOpen={isNavigationPaneOpen}
+            page={page}
+          />
+          {showContentTooLargeBanner && <ContentLimitBanner className="px-page-x" />}
+          <PageEditorBody
+            config={config}
+            customRealtimeEventHandlers={mergedCustomEventHandlers}
+            editorReady={editorReady}
+            editorForwardRef={editorRef}
+            handleEditorReady={handleEditorReady}
+            handleOpenNavigationPane={handleOpenNavigationPane}
+            handlers={handlers}
+            isNavigationPaneOpen={isNavigationPaneOpen}
+            page={page}
+            projectId={projectId}
+            storeType={storeType}
+            webhookConnectionParams={webhookConnectionParams}
+            workspaceSlug={workspaceSlug}
+            extendedEditorProps={extendedEditorProps}
+            isFetchingFallbackBinary={isFetchingFallbackBinary}
+            onCollaborationStateChange={setCollaborationState}
+          />
+        </div>
+        {hasAgentTeammates && projectId && page.id && (
+          <AgentTeammates workspaceSlug={workspaceSlug} projectId={projectId} pageId={page.id} />
+        )}
       </div>
-      {import.meta.env.VITE_AGENT_TEAMMATES === "1" && projectId && page.id && (
-        <AgentTeammates workspaceSlug={workspaceSlug} projectId={projectId} pageId={page.id} />
-      )}
       <PageNavigationPaneRoot
         storeType={storeType}
         handleClose={handleCloseNavigationPane}

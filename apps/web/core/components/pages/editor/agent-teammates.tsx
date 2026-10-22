@@ -120,7 +120,7 @@ export function AgentTeammates({
   return (
     <aside
       aria-label="Agent teammates"
-      className="flex h-full w-[390px] shrink-0 flex-col border-l border-subtle bg-surface-1 text-primary"
+      className="flex h-[75dvh] min-h-[400px] w-full shrink-0 flex-col border-t border-subtle bg-surface-1 text-primary lg:h-full lg:min-h-0 lg:w-[390px] lg:border-t-0 lg:border-l"
     >
       <div className="border-b border-subtle p-4">
         <div className="flex items-center justify-between">
