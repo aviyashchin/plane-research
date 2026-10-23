@@ -43,7 +43,7 @@ repository's pinned pnpm. The flag changes only sign-in recovery:
 ```sh
 corepack pnpm --filter admin... install --frozen-lockfile --ignore-scripts
 NODE_OPTIONS=--max-old-space-size=4096 VITE_AUTH0_SSO=1 VITE_ADMIN_BASE_PATH=/god-mode corepack pnpm turbo run build --filter=admin --concurrency=1
-cp -a apps/admin/build/client auth0/admin-build
+cp -a apps/admin/build/client /path/to/plane-deployment/auth0/admin-build
 ```
 
 Back up the database and upload volume before installing or upgrading. Then:
