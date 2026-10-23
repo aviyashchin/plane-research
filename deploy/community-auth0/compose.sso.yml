@@ -1,4 +1,9 @@
 services:
+  admin:
+    image: plane-community-admin-auth0:v1.4.2
+    build:
+      context: ./auth0
+      dockerfile: Dockerfile.admin
   api:
     image: plane-community-auth0:v1.4.2
     build:

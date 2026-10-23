@@ -1,3 +1,7 @@
+# Copyright (c) 2023-present Plane Software, Inc. and contributors
+# SPDX-License-Identifier: AGPL-3.0-only
+# See the LICENSE file for details.
+
 from datetime import timedelta
 from urllib.parse import urlencode, urlsplit
 
@@ -5,6 +9,7 @@ from authlib.integrations.django_client import OAuth
 from authlib.integrations.base_client.errors import OAuthError
 from joserfc.errors import JoseError
 import requests
+from rest_framework.exceptions import AuthenticationFailed
 from django.conf import settings
 from django.contrib.auth import logout
 from django.core.exceptions import PermissionDenied
@@ -60,13 +65,21 @@ def csrf_token(request):
     return JsonResponse({"csrf_token": get_token(request)})
 
 
+def safe_destination(value):
+    if not isinstance(value, str) or any(ord(char) < 32 for char in value) or "\\" in value:
+        return None
+    parsed = urlsplit(value)
+    roots = tuple("/" + slug + "/" for slug in settings.AUTH0_ORGANIZATION_WORKSPACES.values()) + ("/god-mode/",)
+    if parsed.scheme or parsed.netloc or not parsed.path.startswith(roots):
+        return None
+    return value
+
+
 @csrf_protect
 @require_http_methods(["GET", "POST"])
 def sign_in(request):
     if request.method == "GET":
-        destination = request.GET.get("next")
-        if destination not in ("/god-mode/general/",):
-            destination = None
+        destination = safe_destination(request.GET.get("next") or request.GET.get("next_path"))
         if destination:
             request.session["auth0_destination"] = destination
         from .access import require_sso_session
@@ -159,12 +172,18 @@ def sign_out(request):
 @require_GET
 def browser_access(request):
     """Gate native HTML without replacing the upstream Community applications."""
-    from .access import require_sso_session
+    from .access import require_api_identity, require_sso_session
     try:
-        require_sso_session(request)
-    except PermissionDenied:
+        original_path = urlsplit(request.headers.get("X-Forwarded-Uri", "")).path
+        bucket = "/" + settings.AWS_STORAGE_BUCKET_NAME
+        if request.headers.get("X-Api-Key") and (original_path == bucket or original_path.startswith(bucket + "/")):
+            require_api_identity(request, asset=True)
+        else:
+            require_sso_session(request)
+    except (PermissionDenied, AuthenticationFailed):
         target = "/auth/auth0/"
-        if request.headers.get("X-Forwarded-Uri", "").startswith("/god-mode"):
-            target += "?next=/god-mode/general/"
+        destination = safe_destination(request.headers.get("X-Forwarded-Uri"))
+        if destination:
+            target += "?" + urlencode({"next": destination})
         return HttpResponseRedirect(target)
     return HttpResponse(status=204)

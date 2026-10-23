@@ -1,3 +1,7 @@
+# Copyright (c) 2023-present Plane Software, Inc. and contributors
+# SPDX-License-Identifier: AGPL-3.0-only
+# See the LICENSE file for details.
+
 """Explicit operator linking; login never links accounts by email."""
 import hashlib
 
@@ -55,7 +59,8 @@ class Command(BaseCommand):
                 raise CommandError("Existing user has a different Auth0 identity")
             Account.objects.get_or_create(user=user, provider="auth0", provider_account_id=subject,
                 defaults={"access_token": "", "refresh_token": "", "metadata": {"issuer": settings.AUTH0_ISSUER}})
-            user.set_unusable_password()
+            if user.has_usable_password():
+                user.set_unusable_password()
             user.is_email_verified = True
             user.save(update_fields=["password", "is_email_verified"])
             workspace = Workspace.objects.get(slug=slug)

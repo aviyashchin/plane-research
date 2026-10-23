@@ -1,3 +1,7 @@
+# Copyright (c) 2023-present Plane Software, Inc. and contributors
+# SPDX-License-Identifier: AGPL-3.0-only
+# See the LICENSE file for details.
+
 """Real native API calls detect a return to the Pages-only pilot."""
 from datetime import timedelta
 from unittest.mock import patch
@@ -86,4 +90,13 @@ class NativeCommunitySSO(TestCase):
         self.client.logout()
         response = self.client.get("/auth/auth0/check/", HTTP_X_FORWARDED_URI="/god-mode/general/")
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response["Location"], "/auth/auth0/?next=/god-mode/general/")
+        self.assertEqual(response["Location"], "/auth/auth0/?next=%2Fgod-mode%2Fgeneral%2F")
+
+    def test_native_work_item_destination_survives_sso_entry(self):
+        target = "/company/projects/123/issues/456/?view=board"
+        response = self.client.get("/auth/auth0/", {"next_path": target})
+        self.assertEqual(response["Location"], target)
+
+    def test_external_destination_is_ignored(self):
+        response = self.client.get("/auth/auth0/", {"next": "//attacker.example/company/"})
+        self.assertEqual(response["Location"], "/company/")

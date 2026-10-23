@@ -4,7 +4,9 @@ This deployment overlay retains the complete upstream Plane Community v1.4.2
 web, admin, live, space, worker and data services. The small AGPL backend adapter
 uses Auth0 Universal Login for authentication. Native Plane roles still control
 all projects, work items, cycles, modules, views, pages and instance settings.
-No paid license, trial, pilot route allowlist or custom frontend is required.
+No paid license, trial or pilot route allowlist is required. A deployment-only
+God Mode flag redirects expired sessions to SSO instead of the disabled password
+form. All native Community screens and controls remain available.
 
 Plane's maintained native OIDC integration is a paid-edition feature:
 https://developers.plane.so/self-hosting/govern/oidc-sso . This overlay therefore
@@ -35,13 +37,22 @@ Register `${AUTH0_BASE_URL}/auth/auth0/callback/` as a client callback and
 `${AUTH0_BASE_URL}/auth/auth0/` as an allowed logout URL. Preserve other entries.
 Use HTTPS, loopback ingress and the existing private network boundary.
 
+Build the native admin app from this exact source revision with Node 22 and the
+repository's pinned pnpm. The flag changes only sign-in recovery:
+
+```sh
+corepack pnpm --filter admin... install --frozen-lockfile --ignore-scripts
+NODE_OPTIONS=--max-old-space-size=4096 VITE_AUTH0_SSO=1 VITE_ADMIN_BASE_PATH=/god-mode corepack pnpm turbo run build --filter=admin --concurrency=1
+cp -a apps/admin/build/client auth0/admin-build
+```
+
 Back up the database and upload volume before installing or upgrading. Then:
 
 ```sh
-sudo docker compose --project-name plane-community --env-file plane.env build api
+sudo docker compose --project-name plane-community --env-file plane.env build api admin
 sudo docker compose --project-name plane-community --env-file plane.env run --rm --no-deps --entrypoint python api manage.py migrate plane_sso --noinput
 sudo docker compose --project-name plane-community --env-file plane.env run --rm --no-deps --entrypoint python api manage.py link_auth0_administrator owner@example.com
-sudo docker compose --project-name plane-community --env-file plane.env up -d --no-deps api proxy
+sudo docker compose --project-name plane-community --env-file plane.env up -d --no-deps api admin proxy
 ```
 
 The explicit linking command requires an existing active native account and one
@@ -51,7 +62,10 @@ login never links accounts by email and never grants administrator access.
 New company members receive native member role 15. Existing native roles remain.
 
 `/` and `/god-mode/` enter SSO. The same secure session serves both applications.
-Caddy checks native HTML requests before serving the upstream frontend. Password,
+Caddy checks native HTML and every object upload/download before proxying.
+Native signed file URLs also require a current company session or bound API key.
+Caddy pins the HTTPS forwarding header because the private ingress terminates TLS.
+Native work-item and page links survive SSO through validated relative destinations. Password,
 magic-link and alternate-provider login routes are disabled. Browser writes
 with an Origin or Referer must match the configured application origin. Native
 collaboration forwards server requests without Origin. Secure SameSite=Lax

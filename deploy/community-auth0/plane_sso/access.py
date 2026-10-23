@@ -1,3 +1,7 @@
+# Copyright (c) 2023-present Plane Software, Inc. and contributors
+# SPDX-License-Identifier: AGPL-3.0-only
+# See the LICENSE file for details.
+
 """Require company identity, then retain every native Community permission check."""
 from urllib.parse import urlsplit
 
@@ -35,8 +39,8 @@ def require_sso_session(request):
     require_member(identity["sub"], identity["organization"])
 
 
-def require_api_identity(request):
-    if not request.path.startswith("/api/v1/"):
+def require_api_identity(request, *, asset=False):
+    if not asset and not request.path.startswith("/api/v1/"):
         raise PermissionDenied("Native API keys require the versioned API")
     result = APIKeyAuthentication().authenticate(request)
     if result is None:

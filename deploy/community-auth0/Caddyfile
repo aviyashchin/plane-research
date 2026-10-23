@@ -13,11 +13,19 @@
     reverse_proxy /spaces/* space:3000
     reverse_proxy /god-mode/* admin:3000
     reverse_proxy /live/* live:3000
-    reverse_proxy /api/* api:8000
-    reverse_proxy /auth/* api:8000
+    reverse_proxy /api/* api:8000 {
+        header_up X-Forwarded-Proto https
+    }
+    reverse_proxy /auth/* api:8000 {
+        header_up X-Forwarded-Proto https
+    }
     reverse_proxy /static/* api:8000
     reverse_proxy /{$BUCKET_NAME}/* plane-minio:9000
     reverse_proxy /{$BUCKET_NAME} plane-minio:9000
+    @assets path /{$BUCKET_NAME} /{$BUCKET_NAME}/*
+    forward_auth @assets api:8000 {
+        uri /auth/auth0/check/
+    }
     @html {
         header Accept *text/html*
         not path /auth/* /api/* /static/* /live/* /{$BUCKET_NAME}/*
