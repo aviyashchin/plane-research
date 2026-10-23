@@ -1,0 +1,10 @@
+services:
+  api:
+    image: plane-community-auth0:v1.4.2
+    build:
+      context: ./auth0
+    env_file:
+      - ./auth0.env
+  proxy:
+    volumes:
+      - ./auth0/Caddyfile:/etc/caddy/Caddyfile:ro
