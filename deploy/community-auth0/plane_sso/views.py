@@ -186,4 +186,8 @@ def browser_access(request):
         if destination:
             target += "?" + urlencode({"next": destination})
         return HttpResponseRedirect(target)
+    if original_path.startswith("/god-mode/"):
+        from plane.license.models import InstanceAdmin
+        if not InstanceAdmin.objects.filter(user=request.user).exists():
+            return HttpResponse("Instance administrator access required", status=403)
     return HttpResponse(status=204)

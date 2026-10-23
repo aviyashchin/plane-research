@@ -5,7 +5,9 @@
     request_body {
         max_size {$FILE_SIZE_LIMIT}
     }
-    @signin path / /sign-in /sign-in/* /sign-up /sign-up/*
+    @root path /
+    redir @root /auth/auth0/?{http.request.uri.query} temporary
+    @signin path /sign-in /sign-in/* /sign-up /sign-up/*
     redir @signin /auth/auth0/ temporary
     @adminentry path /god-mode /god-mode/
     redir @adminentry /auth/auth0/?next=/god-mode/general/ temporary

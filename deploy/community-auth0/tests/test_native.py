@@ -100,3 +100,9 @@ class NativeCommunitySSO(TestCase):
     def test_external_destination_is_ignored(self):
         response = self.client.get("/auth/auth0/", {"next": "//attacker.example/company/"})
         self.assertEqual(response["Location"], "/company/")
+
+    def test_non_administrator_browser_cannot_loop_into_god_mode(self):
+        InstanceAdmin.objects.filter(user=self.user).delete()
+        response = self.client.get("/auth/auth0/check/", HTTP_X_FORWARDED_URI="/god-mode/general/")
+        self.assertEqual(response.status_code, 403)
+        self.assertContains(response, "Instance administrator access required", status_code=403)
