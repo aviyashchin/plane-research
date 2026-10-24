@@ -38,6 +38,7 @@ const useCyclesDetails = (props: IActiveCycleDetails) => {
   const { fetchActiveCycleProgress, getCycleById, fetchActiveCycleAnalytics } = useCycle();
   // derived values
   const cycle = cycleId ? getCycleById(cycleId) : null;
+  const hasCycleDates = Boolean(cycle?.start_date && cycle?.end_date);
 
   // fetch cycle details
   useSWR(
@@ -46,18 +47,18 @@ const useCyclesDetails = (props: IActiveCycleDetails) => {
     { revalidateIfStale: false, revalidateOnFocus: false }
   );
   useSWR(
-    workspaceSlug && projectId && cycle?.id && !cycle?.distribution
+    workspaceSlug && projectId && cycle?.id && hasCycleDates && !cycle?.distribution
       ? `PROJECT_ACTIVE_CYCLE_${projectId}_DURATION_${cycle.id}`
       : null,
-    workspaceSlug && projectId && cycle?.id && !cycle?.distribution
+    workspaceSlug && projectId && cycle?.id && hasCycleDates && !cycle?.distribution
       ? () => fetchActiveCycleAnalytics(workspaceSlug, projectId, cycle.id, "issues")
       : null
   );
   useSWR(
-    workspaceSlug && projectId && cycle?.id && !cycle?.estimate_distribution
+    workspaceSlug && projectId && cycle?.id && hasCycleDates && !cycle?.estimate_distribution
       ? `PROJECT_ACTIVE_CYCLE_${projectId}_ESTIMATE_DURATION_${cycle.id}`
       : null,
-    workspaceSlug && projectId && cycle?.id && !cycle?.estimate_distribution
+    workspaceSlug && projectId && cycle?.id && hasCycleDates && !cycle?.estimate_distribution
       ? () => fetchActiveCycleAnalytics(workspaceSlug, projectId, cycle.id, "points")
       : null
   );

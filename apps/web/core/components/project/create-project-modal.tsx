@@ -66,7 +66,12 @@ export function CreateProjectModal(props: Props) {
   });
 
   return (
-    <ModalCore isOpen={isOpen} position={EModalPosition.TOP} width={EModalWidth.XXXXL}>
+    <ModalCore
+      isOpen={isOpen}
+      position={EModalPosition.TOP}
+      width={EModalWidth.XXXXL}
+      className="max-h-[calc(100dvh-5rem)] max-w-full min-w-0 overflow-y-auto md:max-h-[calc(100dvh-10rem)]"
+    >
       {currentStep === EProjectCreationSteps.CREATE_PROJECT && (
         <CreateProjectForm
           setToFavorite={setToFavorite}

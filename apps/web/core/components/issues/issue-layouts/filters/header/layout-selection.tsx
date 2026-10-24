@@ -37,6 +37,8 @@ export function LayoutSelection(props: Props) {
         <Tooltip key={layout.key} tooltipContent={t(layout.i18n_title)} isMobile={isMobile}>
           <button
             type="button"
+            aria-label={t(layout.i18n_title)}
+            aria-pressed={selectedLayout === layout.key}
             className={cn(
               "group grid h-5.5 w-7 place-items-center overflow-hidden rounded-sm transition-all hover:bg-layer-transparent-hover",
               {
