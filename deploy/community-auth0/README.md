@@ -47,9 +47,10 @@ branding does not unlock paid features or enable optional AI providers.
 ```sh
 corepack pnpm --filter web... --filter admin... --filter space... install --frozen-lockfile --ignore-scripts
 NODE_OPTIONS=--max-old-space-size=6144 VITE_AUTH0_SSO=1 VITE_ADMIN_BASE_PATH=/god-mode VITE_SPACE_BASE_PATH=/spaces VITE_WEBSITE_URL=https://subconscious.ai VITE_SUPPORT_EMAIL=avi@subconscious.ai corepack pnpm turbo run build --filter=web --filter=admin --filter=space --concurrency=1
-cp -a apps/web/build/client /path/to/plane-deployment/auth0/web-build
-cp -a apps/admin/build/client /path/to/plane-deployment/auth0/admin-build
-cp -a apps/space/build /path/to/plane-deployment/auth0/space-build
+mkdir -p /path/to/plane-deployment/auth0/{web-build,admin-build,space-build}
+rsync -a --delete apps/web/build/client/ /path/to/plane-deployment/auth0/web-build/
+rsync -a --delete apps/admin/build/client/ /path/to/plane-deployment/auth0/admin-build/
+rsync -a --delete apps/space/build/ /path/to/plane-deployment/auth0/space-build/
 ```
 
 Do not run the build and type-check Turbo tasks concurrently: both rebuild

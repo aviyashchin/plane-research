@@ -657,7 +657,7 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
       {
         title: "PQL",
         description:
-          "Write Subconscious Query Language in search with support\nfor Boolean operators. Soon, you can write natural\nlanguage queries.",
+          "Use the query language in search with support\nfor Boolean operators. Soon, you can write natural\nlanguage queries.",
         cloud: {
           free: false,
           one: false,
@@ -749,7 +749,7 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
       },
       {
         title: "API-enabled Audit Logs",
-        description: "See a full-workspace audit log and use APIs to flag\nPlane activity in compliance systems.",
+        description: "See a full-workspace audit log and use APIs to flag\nworkspace activity in compliance systems.",
         comingSoon: true,
         cloud: {
           free: false,
