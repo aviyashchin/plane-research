@@ -20,15 +20,13 @@ export function PoweredBy(props: TPoweredBy) {
 
   return (
     <a
-      href={WEBSITE_URL}
+      href="https://github.com/aviyashchin/plane-research/tree/agent/community-auth0"
       className="fixed right-5 bottom-2.5 !z-[999999] flex items-center gap-1 rounded-sm border border-subtle bg-layer-3 px-2 py-1 shadow-raised-100"
       target="_blank"
       rel="noreferrer noopener"
     >
       <PlaneLogo className="h-3 w-auto text-primary" />
-      <div className="text-11">
-        Powered by <span className="font-semibold">Plane Publish</span>
-      </div>
+      <div className="text-11">Source and license</div>
     </a>
   );
 }

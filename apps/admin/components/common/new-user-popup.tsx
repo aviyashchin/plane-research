@@ -11,8 +11,8 @@ import { useTheme as useNextTheme } from "next-themes";
 import { Button, getButtonStyling } from "@plane/propel/button";
 import { resolveGeneralTheme } from "@plane/utils";
 // hooks
-import TakeoffIconDark from "@/app/assets/logos/takeoff-icon-dark.svg?url";
-import TakeoffIconLight from "@/app/assets/logos/takeoff-icon-light.svg?url";
+import TakeoffIconDark from "@/app/assets/subconscious-mark.svg?url";
+import TakeoffIconLight from "@/app/assets/subconscious-mark.svg?url";
 import { useTheme } from "@/hooks/store";
 // icons
 
@@ -29,7 +29,7 @@ export const NewUserPopup = observer(function NewUserPopup() {
         <div className="grow">
           <div className="text-14 font-semibold">Create workspace</div>
           <div className="py-2 text-13 font-medium text-tertiary">
-            Instance setup done! Welcome to Plane instance portal. Start your journey with by creating your first
+            Instance setup done! Welcome to Subconscious instance portal. Start your journey with by creating your first
             workspace.
           </div>
           <div className="flex items-center gap-4 pt-2">
@@ -46,7 +46,7 @@ export const NewUserPopup = observer(function NewUserPopup() {
             src={resolveGeneralTheme(resolvedTheme) === "dark" ? TakeoffIconDark : TakeoffIconLight}
             height={80}
             width={80}
-            alt="Plane icon"
+            alt="Subconscious icon"
           />
         </div>
       </div>

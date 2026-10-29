@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Subconscious — DAG mark
+  ───────────────────────
+  Pearl backdoor scenario rendered as a 3-node directed acyclic graph:
+
+         C   ← confounder (latent, dashed grey)
+        ╱ ╲
+       ↓   ↓
+       T → O   ← red causal arrow (the only red, per the doctrine)
+
+  The mark embodies the brand's argument: the only red arrow is the
+  causal claim we measure. Confounder paths and the latent C node are
+  grey. The visual reads as "find the causal arrow despite confounding,"
+  which is what Subconscious's RCT-on-LLMs methodology does.
+
+  Used as: favicon (link rel="icon" type="image/svg+xml"), brand mark
+  next to the wordmark on every canonical surface, social-meta image
+  fallback. Animated variants live in preview/_base.css under .dag-mark.
+
+  Square 48×48 viewBox so it fits favicon slots, social previews, and
+  inline placement at any size without distortion.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <!-- Background — transparent so the mark adapts to dark or light surfaces -->
+
+  <!-- Confounder paths (grey, thin) -->
+  <line x1="23" y1="11" x2="11" y2="33" stroke="#5a5a5a" stroke-width="1" stroke-linecap="round"/>
+  <line x1="25" y1="11" x2="37" y2="33" stroke="#5a5a5a" stroke-width="1" stroke-linecap="round"/>
+
+  <!-- Causal arrow T → O (red, the punchline) -->
+  <line x1="11" y1="36" x2="37" y2="36" stroke="#c8102e" stroke-width="1.6" stroke-linecap="round"/>
+
+  <!-- Latent confounder C (top, dashed circle) -->
+  <circle cx="24" cy="8" r="2.6" fill="#f2f1ed" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="1.4 1"/>
+
+  <!-- Treatment T (filled ink — intervened) -->
+  <circle cx="10" cy="36" r="2.6" fill="#0b0b0b" stroke="#0b0b0b" stroke-width="1"/>
+
+  <!-- Outcome O (open ink — observed) -->
+  <circle cx="38" cy="36" r="2.6" fill="#f2f1ed" stroke="#0b0b0b" stroke-width="1"/>
+</svg>

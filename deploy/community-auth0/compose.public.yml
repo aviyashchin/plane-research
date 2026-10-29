@@ -1,0 +1,20 @@
+# Add explicitly after DNS and Auth0 callbacks are ready. Private ingress stays available.
+services:
+  public-edge:
+    image: makeplane/plane-proxy:v1.4.2
+    command: ["caddy", "run", "--config", "/etc/caddy/PublicCaddyfile", "--adapter", "caddyfile"]
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./auth0/public.Caddyfile:/etc/caddy/PublicCaddyfile:ro
+      - public_tls_data:/data
+      - public_tls_config:/config
+    depends_on:
+      - proxy
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.5
+volumes:
+  public_tls_data:
+  public_tls_config:

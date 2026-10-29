@@ -1,0 +1,2 @@
+FROM makeplane/plane-frontend:v1.4.2
+COPY web-build/ /usr/share/nginx/html/

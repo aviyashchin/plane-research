@@ -4,6 +4,7 @@
  * See the LICENSE file for details.
  */
 
+import { useEffect } from "react";
 import { observer } from "mobx-react";
 // components
 import { LogoSpinner } from "@/components/common/logo-spinner";
@@ -18,6 +19,16 @@ import { InstanceSignInForm } from "./sign-in-form";
 function HomePage() {
   // store hooks
   const { instance, error } = useInstance();
+
+  useEffect(() => {
+    if (process.env.VITE_AUTH0_SSO === "1") {
+      window.location.replace("/auth/auth0/?next=/god-mode/general/");
+    }
+  }, []);
+
+  if (process.env.VITE_AUTH0_SSO === "1") {
+    return <LogoSpinner />;
+  }
 
   // if instance is not fetched, show loading
   if (!instance && !error) {
@@ -46,5 +57,5 @@ export default observer(HomePage);
 
 export const meta: Route.MetaFunction = () => [
   { title: "Admin – Instance Setup & Sign-In" },
-  { name: "description", content: "Configure your Plane instance or sign in to the admin portal." },
+  { name: "description", content: "Configure your Subconscious instance or sign in to the admin portal." },
 ];

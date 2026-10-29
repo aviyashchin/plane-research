@@ -271,7 +271,7 @@
   "project_page": {
     "empty_state": {
       "general": {
-        "title": "Пишіть нотатки, документи або базу знань із допомогою AI Galileo.",
+        "title": "Write a note, document, or knowledge base.",
         "description": "Сторінки — це простір для ідей. Пишіть, форматуйте, вбудовуйте робочі одиниці та використовуйте компоненти.",
         "primary_button": {
           "text": "Створити першу сторінку"
