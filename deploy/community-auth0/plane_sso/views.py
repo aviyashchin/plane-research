@@ -92,14 +92,26 @@ def sign_in(request):
         options = format_html_join("", '<option value="{}">{}</option>',
                                    settings.AUTH0_ORGANIZATION_WORKSPACES.items())
         return HttpResponse(format_html(
-            '<!doctype html><title>Plane — Subconscious SSO</title><h1>Plane Community</h1>'
+            '<!doctype html><html lang="en"><head><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            '<title>Subconscious Projects</title><link rel="icon" href="/favicon.ico">'
+            '<style>body{{margin:0;background:#f2f1ed;color:#0b0b0b;font:16px system-ui}}'
+            'main{{max-width:440px;margin:10vh auto;padding:32px}}'
+            'h1{{font-size:28px}}label,button{{display:block;margin:16px 0}}'
+            'select,button{{padding:12px;border:1px solid #5a5a5a;border-radius:6px}}'
+            'button{{background:#0b0b0b;color:#f2f1ed;cursor:pointer}}'
+            'a{{color:inherit}}footer{{margin-top:32px;font-size:13px}}</style></head><body><main>'
+            '<img src="/subconscious-mark.svg" width="64" height="64" alt="Subconscious">'
+            '<h1>Subconscious Projects</h1>'
             '<form method="post"><input type="hidden" name="csrfmiddlewaretoken" value="{}">'
             '<label>Company <select name="organization">{}</select></label>'
             '<button type="submit">Continue with Subconscious SSO</button></form>'
             '<form method="post" action="/auth/auth0/logout/">'
             '<input type="hidden" name="csrfmiddlewaretoken" value="{}">'
-            '<button type="submit">Sign out of Plane</button>'
-            '<button type="submit" name="shared" value="1">Sign out of Auth0 SSO</button></form>',
+            '<button type="submit">Sign out of Subconscious Projects</button>'
+            '<button type="submit" name="shared" value="1">Sign out of Auth0 SSO</button></form>'
+            '<footer><a href="https://github.com/aviyashchin/plane-research/tree/agent/community-auth0">'
+            'Source and license</a></footer></main></body></html>',
             get_token(request), options, get_token(request)))
     organization = request.POST.get("organization")
     if organization not in settings.AUTH0_ORGANIZATION_WORKSPACES:

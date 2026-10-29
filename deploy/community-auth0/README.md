@@ -37,22 +37,31 @@ Register `${AUTH0_BASE_URL}/auth/auth0/callback/` as a client callback and
 `${AUTH0_BASE_URL}/auth/auth0/` as an allowed logout URL. Preserve other entries.
 Use HTTPS, loopback ingress and the existing private network boundary.
 
-Build the native admin app from this exact source revision with Node 22 and the
-repository's pinned pnpm. The flag changes only sign-in recovery:
+Build the company-branded web, administrator, and Spaces applications from this
+exact source revision with Node 22 and the repository's pinned pnpm. Product
+labels and icons use Subconscious assets. Upstream copyright, package names,
+and AGPL license notices remain intact. The login page and Help menu link to
+this modified source. Paid-edition labels identify commercial offerings;
+branding does not unlock paid features or enable optional AI providers.
 
 ```sh
-corepack pnpm --filter admin... install --frozen-lockfile --ignore-scripts
-NODE_OPTIONS=--max-old-space-size=4096 VITE_AUTH0_SSO=1 VITE_ADMIN_BASE_PATH=/god-mode corepack pnpm turbo run build --filter=admin --concurrency=1
+corepack pnpm --filter web... --filter admin... --filter space... install --frozen-lockfile --ignore-scripts
+NODE_OPTIONS=--max-old-space-size=6144 VITE_AUTH0_SSO=1 VITE_ADMIN_BASE_PATH=/god-mode VITE_SPACE_BASE_PATH=/spaces VITE_WEBSITE_URL=https://subconscious.ai VITE_SUPPORT_EMAIL=avi@subconscious.ai corepack pnpm turbo run build --filter=web --filter=admin --filter=space --concurrency=1
+cp -a apps/web/build/client /path/to/plane-deployment/auth0/web-build
 cp -a apps/admin/build/client /path/to/plane-deployment/auth0/admin-build
+cp -a apps/space/build /path/to/plane-deployment/auth0/space-build
 ```
+
+Do not run the build and type-check Turbo tasks concurrently: both rebuild
+shared package output directories.
 
 Back up the database and upload volume before installing or upgrading. Then:
 
 ```sh
-sudo docker compose --project-name plane-community --env-file plane.env build api admin
+sudo docker compose --project-name plane-community --env-file plane.env build api admin web space
 sudo docker compose --project-name plane-community --env-file plane.env run --rm --no-deps --entrypoint python api manage.py migrate plane_sso --noinput
 sudo docker compose --project-name plane-community --env-file plane.env run --rm --no-deps --entrypoint python api manage.py link_auth0_administrator owner@example.com
-sudo docker compose --project-name plane-community --env-file plane.env up -d --no-deps api admin proxy
+sudo docker compose --project-name plane-community --env-file plane.env up -d --no-deps api admin web space proxy
 ```
 
 The explicit linking command requires an existing active native account and one
@@ -100,3 +109,42 @@ Never use `down -v`. Restore database and uploads together after data loss.
 Retain the SSO overlay during rollback; removing the overlay reopens native
 password login. Local backups cannot protect against loss of the host disk.
 Keep backup scheduling and off-host retention in the machine's private runbook.
+
+## Optional company-domain HTTPS ingress
+
+`compose.public.yml` is an explicit additional Compose file. The default
+installation keeps loopback ingress. The public edge uses the existing Caddy
+image and routes every request through the same authenticated proxy. All
+backing-service ports remain private. Caddy provisions and renews the domain
+certificate using persistent TLS volumes. No external load balancer is needed.
+
+Before enabling public ingress:
+
+1. Create an A record for `projects.subconscious.ai` at the existing EC2 public
+   address. Preserve unrelated DNS records and the main marketing website.
+2. Append `https://projects.subconscious.ai/auth/auth0/callback/` and
+   `https://projects.subconscious.ai/auth/auth0/` to the existing Auth0 client's
+   callback and logout URL lists. Preserve existing pilot entries. Set the
+   application's display name to `Subconscious Projects`.
+3. Set `AUTH0_BASE_URL` and `WEB_URL` to `https://projects.subconscious.ai`,
+   `CORS_ALLOWED_ORIGINS` to the same origin, and `APP_DOMAIN` to the hostname.
+   Public and private origins use separate host-only cookies; the public origin
+   becomes canonical for login and writes.
+4. Allow inbound TCP ports 80 and 443 in the instance security group. Do not
+   expose API, database, Redis, RabbitMQ, MinIO, or private development ports.
+5. Recreate the application services after the origin change, then start:
+
+```sh
+sudo docker compose --project-name plane-community --env-file plane.env -f docker-compose.yml -f docker-compose.override.yml -f auth0/compose.public.yml up -d public-edge
+```
+
+Check real DNS and a trusted HTTPS certificate before reporting a public URL.
+Verify anonymous API/object denial, Auth0 authorization entry and callback,
+Avi's native administrator identity, project writes, and upload/download.
+The EC2 address is not an Elastic IP; a stop/start can require a DNS update.
+Keep the AWS storage upgrade paused.
+
+Recovery: the deployment backup archives `auth0/` recursively, including all
+three built applications and public ingress configuration. On a recovery host,
+build `api`, `admin`, `web`, and `space` from the archived Dockerfiles/artifacts.
+TLS certificates can be reissued after DNS points to the recovery host.

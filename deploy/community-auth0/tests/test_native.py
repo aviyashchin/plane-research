@@ -15,6 +15,15 @@ from plane_sso.models import LoginGrant
 
 
 class NativeCommunitySSO(TestCase):
+    def test_sign_in_uses_company_brand_and_preserves_sso(self):
+        self.client.logout()
+        response = self.client.get("/auth/auth0/")
+        self.assertContains(response, "<title>Subconscious Projects</title>")
+        self.assertContains(response, "Continue with Subconscious SSO")
+        self.assertContains(response, "csrfmiddlewaretoken")
+        self.assertContains(response, "Source and license")
+        self.assertNotContains(response, "Plane")
+
     def setUp(self):
         self.directory = patch("plane_sso.access.require_member")
         self.directory.start()

@@ -1,4 +1,14 @@
 services:
+  space:
+    image: subconscious-projects-space:v1.4.2
+    build:
+      context: ./auth0
+      dockerfile: Dockerfile.space
+  web:
+    image: subconscious-projects-web:v1.4.2
+    build:
+      context: ./auth0
+      dockerfile: Dockerfile.web
   admin:
     image: plane-community-admin-auth0:v1.4.2
     build:

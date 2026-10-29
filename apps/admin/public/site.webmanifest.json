@@ -1,13 +1,16 @@
 {
-  "name": "Plane God Mode",
-  "short_name": "Plane God Mode",
-  "description": "Plane helps you plan your issues, cycles, and product modules.",
+  "name": "Subconscious Projects",
+  "short_name": "Subconscious",
+  "description": "Subconscious projects, work items, cycles, and pages.",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#f9fafb",
   "theme_color": "#3f76ff",
   "icons": [
-    { "src": "/favicon/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/favicon/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png" }
+    {
+      "src": "/subconscious-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
   ]
 }
